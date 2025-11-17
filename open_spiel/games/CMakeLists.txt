@@ -10,10 +10,14 @@ set(GAME_SOURCES
   battleship/battleship.h
   battleship/battleship_types.h
   battleship/battleship_types.cc
-  blackjack/blackjack.cc
-  blackjack/blackjack.h
-  blotto/blotto.cc
-  blotto/blotto.h
+        blackjack/blackjack.cc
+        blackjack/blackjack.h
+        blokus_duo/blokus_duo.cc
+        blokus_duo/blokus_duo.h
+        blokus_duo/blokus_duo_logic.cc
+        blokus_duo/blokus_duo_logic.h
+        blotto/blotto.cc
+        blotto/blotto.h
   breakthrough/breakthrough.cc
   breakthrough/breakthrough.h
   bridge/bridge.cc
@@ -219,7 +223,11 @@ if (${OPEN_SPIEL_BUILD_WITH_HANABI})
 endif()
 if (${OPEN_SPIEL_BUILD_WITH_ACPC})
   set(GAME_SOURCES ${GAME_SOURCES} universal_poker/universal_poker.cc universal_poker/universal_poker.h)
-  set(GAME_SOURCES ${GAME_SOURCES} universal_poker/repeated_poker.cc universal_poker/repeated_poker.h)
+  set(GAME_SOURCES ${GAME_SOURCES} universal_poker/repeated_poker.cc universal_poker/repeated_poker.h
+          blokus_duo/blokus_duo_logic.h
+          blokus_duo/blokus_duo_logic.cc
+          blokus_duo/polyomino_data.cc
+          blokus_duo/polyomino_data.h)
 endif()
 
 
@@ -327,6 +335,10 @@ add_test(battleship_test battleship_test)
 add_executable(blackjack_test blackjack/blackjack_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)
 add_test(blackjack_test blackjack_test)
+
+add_executable(blokus_duo_test blokus_duo/blokus_duo_test.cc ${OPEN_SPIEL_OBJECTS}
+        $<TARGET_OBJECTS:tests>)
+add_test(blokus_duo_test blokus_duo_test)
 
 add_executable(blotto_test blotto/blotto_test.cc ${OPEN_SPIEL_OBJECTS}
                $<TARGET_OBJECTS:tests>)

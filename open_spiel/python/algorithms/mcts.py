@@ -435,6 +435,14 @@ class MCTSBot(pyspiel.Bot):
         # Chance node targets are for the respective decision-maker.
         target_return = returns[visit_path[decision_node_idx].player]
         node = visit_path.pop()
+        print("=== DEBUG MCTS BACKUP ===")
+        print("visit_path length:", len(visit_path))
+        print("node.player:", node.player)
+        print("returns:", returns)
+        print("target_return:", target_return)
+        print("node.total_reward (before):", node.total_reward)
+        print("type(target_return):", type(target_return))
+        print("==========================")
         node.total_reward += target_return
         node.explore_count += 1
 
