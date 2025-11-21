@@ -44,14 +44,14 @@ void BasicBlokusDuoTests() {
   SPIEL_CHECK_FLOAT_EQ(values[0], 0.0f);
 
   // Die erwartete Form des Tensors: {Kanäle, Höhe, Breite}
-  const std::vector<int> expected_shape = {kTotalChannels, kBoardSize, kBoardSize};
+  const std::vector<int> expected_shape = {kTotalChannels, kBoardSizeWithoutBorder, kBoardSizeWithoutBorder};
   std::vector<int> lol = expected_shape;
 
   // 1. Testet, ob die deklarierte Form korrekt ist
   SPIEL_CHECK_EQ(game->ObservationTensorShape(), expected_shape);
 
   // 2. Testet, ob die tatsächliche Größe des Tensors korrekt ist (46 * 16 * 16 = 11776)
-  const int expected_size = kTotalChannels * kBoardSize * kBoardSize;
+  const int expected_size = kTotalChannels * kBoardSizeWithoutBorder * kBoardSizeWithoutBorder;
   SPIEL_CHECK_EQ(game->ObservationTensorSize(), expected_size);
 
   // 3. Testet, ob die ObservationTensor-Funktion korrekt die richtige Größe füllt

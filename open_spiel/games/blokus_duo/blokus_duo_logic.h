@@ -196,6 +196,7 @@ const  std::unordered_map<PolyominoType, std::vector<uint64_t>> ALL_POLYOMINO_VA
         // Constants.
         inline constexpr int kNumPlayers = 2;
         inline constexpr int kBoardSize = 16;
+        inline constexpr int kBoardSizeWithoutBorder = 14;
         inline constexpr int kNumCells = kBoardSize * kBoardSize;
         inline constexpr int kNumBitboardParts = kNumCells / 64;
         inline constexpr int kNumPolyominoTypes = 21;
@@ -255,8 +256,10 @@ const  std::unordered_map<PolyominoType, std::vector<uint64_t>> ALL_POLYOMINO_VA
             std::array<uint64_t, kNumBitboardParts>& board
         );
         void update_edges(
+            const std::array<uint64_t, kNumBitboardParts>& board,
+            const std::array<uint64_t, kNumBitboardParts>& opponent_board,
             std::array<uint64_t, kNumBitboardParts>& edges,
-            const ShiftedMask& shifted_mask
+            std::array<uint64_t, kNumBitboardParts>& opponent_edges
         );
         void printboard(std::array<uint64_t, kNumBitboardParts>& board);
         std::vector<int> edges_to_indices(const std::array<uint64_t, kNumBitboardParts>& edges);

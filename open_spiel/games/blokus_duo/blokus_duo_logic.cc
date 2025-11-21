@@ -252,14 +252,13 @@ std::vector<Action> GetAllDistinctActions(
     GetAllDistinctActions(ALL_POLYOMINO_VARIANTS, ALL_POLYOMINO_VARIANTS_INDEX);
 
         void update_edges(
+            const std::array<uint64_t, kNumBitboardParts>& board,
+            const std::array<uint64_t, kNumBitboardParts>& opponent_board,
             std::array<uint64_t, kNumBitboardParts>& edges,
-            const ShiftedMask& shifted_mask
+            std::array<uint64_t, kNumBitboardParts>& opponent_edges
         )
         {
-            std::array<uint64_t, kNumBitboardParts> piece_mask{};
-            piece_mask[shifted_mask.part_index] |= shifted_mask.first_part;
-            if (shifted_mask.part_index + 1 < kNumBitboardParts)
-                piece_mask[shifted_mask.part_index + 1] |= shifted_mask.second_part;
+            std::array<uint64_t, kNumBitboardParts> piece_mask = board;
 
             std::array<uint64_t, kNumBitboardParts> orthogonal{};
 
@@ -278,6 +277,11 @@ std::vector<Action> GetAllDistinctActions(
                 const uint64_t down_right = down >> 1 & 0x7FFF7FFF7FFF7FFFULL;
                 orthogonal[i] |= down | up | left | right;
                 edges[i] |= (up_left | up_right | down_left | down_right) & ~orthogonal[i];
+                edges[i] &= ~piece_mask[i];
+                edges[i] &= ~board[i];
+                edges[i] &= ~opponent_board[i];
+
+                opponent_edges[i] &= ~piece_mask[i];
             }
         }
 

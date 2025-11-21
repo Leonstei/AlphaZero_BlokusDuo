@@ -105,7 +105,8 @@ class BlokusDuoState : public State {
   Player current_player_ = 0;         // Player zero goes first
   Player outcome_ = kInvalidPlayer;
   int num_moves_ = 0;
-  int consecutive_passes_ = 0;
+  bool player0_pass = false;
+  bool player1_pass = false;
 };
 
 // Game object.
@@ -121,7 +122,8 @@ class BlokusDuoGame : public Game {
   absl::optional<double> UtilitySum() const override { return 0; }
   double MaxUtility() const override { return 1; }
   std::vector<int> ObservationTensorShape() const override {// 46
-    return {kTotalChannels, kBoardSize, kBoardSize}; // Ergebnis: {46, 16, 16}
+    return {kTotalChannels, kBoardSizeWithoutBorder, kBoardSizeWithoutBorder};
+    // Ergebnis: {46, 14, 14}
   }
   int MaxGameLength() const override { return max_game_length; }
   std::string ActionToString(Player player, open_spiel::Action action_id) const override;

@@ -34,7 +34,6 @@
 #include "open_spiel/games/blokus_duo/blokus_duo_logic.h"
 
 
-
 namespace open_spiel {
 namespace blokus_duo {
 namespace {
@@ -71,17 +70,22 @@ RegisterSingleTensorObserver single_tensor(kGameType.short_name);
 
 
 void BlokusDuoState::DoApplyAction(open_spiel::Action move) {
+  Player player = CurrentPlayer();
   if (move == kPassAction) {
     // Aktion war PASSEN:
-    consecutive_passes_++;
+    player == 0 ? player0_pass = true : player1_pass = true;
   }else
   {
     auto& current_player_board =
-      CurrentPlayer() == 0 ? player_0_board_ : player_1_board_;
+      player == 0 ? player_0_board_ : player_1_board_;
+    auto& opponent_board =
+      player == 0 ? player_1_board_ : player_0_board_;
     auto& current_player_edges =
-      CurrentPlayer() == 0 ? player_0_edges : player_1_edges;
+      player == 0 ? player_0_edges : player_1_edges;
+    auto& opponent_edges =
+      player == 0 ? player_1_edges : player_0_edges;
     auto& current_polyomino_mask =
-      CurrentPlayer() == 0 ? polyomino_mask_player_0 : polyomino_mask_player_1;
+      player == 0 ? polyomino_mask_player_0 : polyomino_mask_player_1;
 
     // **Dekodierung:** Direkter Lookup in der globalen Liste
     if (move < 0 || move >= ALL_DISTINCT_ACTIONS.size())
@@ -94,8 +98,12 @@ void BlokusDuoState::DoApplyAction(open_spiel::Action move) {
 
     place_piece(blokus_action, combined_board_);
     place_piece(blokus_action, current_player_board);
-    update_edges(current_player_edges, blokus_action.shifted);
-    update_polyomino_mask(current_polyomino_mask, blokus_action.type);
+    update_edges(
+      current_player_board,
+      opponent_board,
+      current_player_edges,
+      opponent_edges);
+      update_polyomino_mask(current_polyomino_mask, blokus_action.type);
 
   }
 
@@ -201,6 +209,10 @@ std::string BlokusDuoState::ToString() const {
   const auto& current_board = (current_player_ == 0) ? player_0_board_ : player_1_board_;
   const auto& opponent_board = (current_player_ == 0) ? player_1_board_ : player_0_board_;
 
+  auto& current_player_edges =
+  CurrentPlayer() == 0 ? player_0_edges : player_1_edges;
+  auto& opponent_edges =
+    CurrentPlayer() == 0 ? player_1_edges : player_0_edges;
   // Die Board-Darstellung:
   std::string board_str = BoardToString(
       current_board,
@@ -208,17 +220,26 @@ std::string BlokusDuoState::ToString() const {
       'X', // Aktueller Spieler
       'O'  // Gegner
   );
+  std::string edges_str = BoardToString(
+    current_player_edges,
+    opponent_edges,
+    'X', // Aktueller Spieler
+    'O'  // Gegner
+);
 
   // Status-Informationen
   return absl::StrCat(
       "--- Blokus Duo State ---\n",
       "Player to move: ", current_player_, "\n",
       "Moves made: ", num_moves_, "\n",
-      "Consecutive passes: ", consecutive_passes_, "\n",
+      "Consecutive passes: ", (player0_pass + player1_pass), "\n",
       "Player 0 Pieces: ", polyomino_mask_player_0, "\n", // Zeigt die Maske an
       "Player 1 Pieces: ", polyomino_mask_player_1, "\n",
       "Board (X=P", current_player_, ", O=P", 1 - current_player_, "):\n",
       board_str,
+      // "Edges (X=P", current_player_, ", O=P", 1 - current_player_, "):\n",
+      // edges_str,
+
       "Is Terminal: ", IsTerminal() ? "Yes" : "No", "\n",
       "Returns: ", absl::StrJoin(Returns(), ", "), "\n"
   );
@@ -238,7 +259,7 @@ std::unique_ptr<StateStruct> BlokusDuoState::ToStruct() const {
 
 
 bool BlokusDuoState::IsTerminal() const {
-  return consecutive_passes_ == NumPlayers();
+  return (player0_pass + player1_pass) == NumPlayers();
 }
 
 std::vector<double> BlokusDuoState::Returns() const {
@@ -290,40 +311,51 @@ void BlokusDuoState::ObservationTensor(Player player,
   const auto& current_player_edges =
     CurrentPlayer() == 0 ? player_0_edges : player_1_edges;
   const auto& opponent_edges =
-    CurrentPlayer() == 0 ? player_0_edges : player_1_edges;
+    CurrentPlayer() == 0 ? player_1_edges : player_0_edges;
 
   const uint32_t current_mask = player == 0 ? polyomino_mask_player_0 : polyomino_mask_player_1;
   const uint32_t opponent_mask = player == 0 ? polyomino_mask_player_1 : polyomino_mask_player_0;
 
+  // std::array<int,196> innerArray;
+  // innerArray.fill(0);
+  // std::array<std::array<int,196>, kTotalChannels > arrayTensor;
+  // arrayTensor.fill(innerArray);
+
   std::fill(values.begin(), values.end(), 0.0f);
 
-  TensorView<3> view(values, {kTotalChannels, kBoardSize, kBoardSize}, true);
-  int current_index = 0;
-
-  for (int r = 0; r < kBoardSize; ++r)
-  {
-    for (int c = 0; c < kBoardSize; ++c) {
-
-      if (IsBitSet(current_player_board, r, c)) { // Pseudo-Funktion
-        view[{0, r, c}] = 1.0f; // Kanal 0: Eigene Steine
+  TensorView<3> view(values,
+    {kTotalChannels, kBoardSizeWithoutBorder, kBoardSizeWithoutBorder}, true);
+  for (int r_out = 0; r_out < kBoardSizeWithoutBorder; ++r_out) {
+    for (int c_out = 0; c_out < kBoardSizeWithoutBorder; ++c_out) {
+      const int r_in = r_out + 1;
+      const int c_in = c_out + 1;
+      // int index = r_in * kBoardSizeWithoutBorder + c_in;
+      if (IsBitSet(current_player_board, r_in, c_in)) {
+        view[{0, r_out, c_out}] = 1.0f;
+        // arrayTensor[0].at(index) = 1;
       }
-      if (IsBitSet(opponent_board, r, c)) { // Pseudo-Funktion
-        view[{1, r, c}] = 1.0f; // Kanal 1: Gegner Steine
+      if (IsBitSet(opponent_board, r_in, c_in)) {
+        view[{1, r_out, c_out}] = 1.0f;
+        // arrayTensor[1][index] = 1;
       }
-      if (IsBitSet(current_player_edges, r, c)) { // Pseudo-Funktion
-        view[{2, r, c}] = 1.0f; // Kanal 2: Eigene Kanten
+      if (IsBitSet(current_player_edges, r_in, c_in)) {
+        view[{2, r_out, c_out}] = 1.0f;
+        // arrayTensor[2][index] = 1;
       }
-      if (IsBitSet(opponent_edges, r, c)) { // Pseudo-Funktion
-        view[{3, r, c}] = 1.0f; // Kanal 3: Gegner Kanten
+      if (IsBitSet(opponent_edges, r_in, c_in)) {
+        view[{3, r_out, c_out}] = 1.0f;
+        // arrayTensor[3][index] = 1;
       }
     }
   }
   int current_channel = 4;
   for (int i = 0; i < kNumPolyominoTypes; ++i) { // i = 0 bis 20 (21 Steine)
     float value = (current_mask >> i & 1u) ? 1.0f : 0.0f;
-    for (int r = 0; r < kBoardSize; ++r) {
-      for (int c = 0; c < kBoardSize; ++c) {
+    for (int r = 0; r < kBoardSizeWithoutBorder; ++r) {
+      for (int c = 0; c < kBoardSizeWithoutBorder; ++c) {
+        // int index = r * kBoardSizeWithoutBorder + c;
         view[{current_channel, r, c}] = value; // Füllt die gesamte Ebene mit dem gleichen Wert
+        // arrayTensor[current_channel][index] = 1;
       }
     }
     current_channel++;
@@ -332,13 +364,16 @@ void BlokusDuoState::ObservationTensor(Player player,
   // 4.2 Gegnerische Steine (Kanäle 25 bis 45)
   for (int i = 0; i < kNumPolyominoTypes; ++i) { // i = 0 bis 20 (21 Steine)
     float value = (opponent_mask >> i & 1u) ? 1.0f : 0.0f;
-    for (int r = 0; r < kBoardSize; ++r) {
-      for (int c = 0; c < kBoardSize; ++c) {
+    for (int r = 0; r < kBoardSizeWithoutBorder; ++r) {
+      for (int c = 0; c < kBoardSizeWithoutBorder; ++c) {
+        // int index = r * kBoardSizeWithoutBorder + c;
         view[{current_channel, r, c}] = value; // Füllt die gesamte Ebene mit dem gleichen Wert
+        // arrayTensor[current_channel].at(index) = 1;
       }
     }
     current_channel++;
   }
+
 }
 
 void BlokusDuoState::UndoAction(Player player, open_spiel::Action move) {
