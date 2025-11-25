@@ -207,6 +207,27 @@ const  std::unordered_map<PolyominoType, std::vector<uint64_t>> ALL_POLYOMINO_VA
         constexpr int kNumBoardChannels = 4; // Steine und Ecken
         constexpr int kNumGlobalChannels = 2 * kNumPolyominoTypes; // 2 * 21 = 42
         constexpr int kTotalChannels = kNumBoardChannels + kNumGlobalChannels;
+
+        inline std::array<uint64_t, kNumBitboardParts> CreateCenterMask() {
+            std::array<uint64_t, kNumBitboardParts> mask{}; // Initialisiert mit Nullen
+
+            // Wir definieren die 8x8-Region von Row 4 bis Row 11 und Col 4 bis Col 11.
+            for (int row = 4; row < 12; ++row) {
+                for (int col = 4; col < 12; ++col) {
+                    int index = row * kBoardSize + col; // 0 bis 255
+
+                    // Berechne Teil-Index (Part) und Bit-Index innerhalb des Teils
+                    int part_index = index / 64;
+                    int bit_index = index % 64;
+
+                    if (part_index < kNumBitboardParts) {
+                        mask[part_index] |= (1ULL << bit_index);
+                    }
+                }
+            }
+            return mask;
+        }
+        const std::array<uint64_t, kNumBitboardParts> kCenterMask = CreateCenterMask();
         // inline constexpr int max_game_length = 42;
         // inline constexpr int max_game_length = 42;
 
@@ -261,8 +282,29 @@ const  std::unordered_map<PolyominoType, std::vector<uint64_t>> ALL_POLYOMINO_VA
             std::array<uint64_t, kNumBitboardParts>& edges,
             std::array<uint64_t, kNumBitboardParts>& opponent_edges
         );
+        void calculate_edges(
+            const std::array<uint64_t, kNumBitboardParts>& combined_board,
+            const std::array<uint64_t, kNumBitboardParts>& current_palyer_board,
+            const std::array<uint64_t, kNumBitboardParts>& opponent_board,
+            std::array<uint64_t, kNumBitboardParts>& edges,
+            std::array<uint64_t, kNumBitboardParts>& opponent_edges
+            );
         void printboard(std::array<uint64_t, kNumBitboardParts>& board);
         std::vector<int> edges_to_indices(const std::array<uint64_t, kNumBitboardParts>& edges);
+        int count_edges(const std::array<uint64_t, kNumBitboardParts>& edges);
+        double legal_moves_difference(
+        const std::array<uint64_t, kNumBitboardParts>& combined_board_,
+        const std::array<uint64_t, kNumBitboardParts>& border,
+        const std::array<uint64_t, kNumBitboardParts>& current_player_board,
+        const std::array<uint64_t, kNumBitboardParts>& opponent_board,
+        const std::array<uint64_t, kNumBitboardParts>& current_player_edges,
+        const std::array<uint64_t, kNumBitboardParts>& opponent_edges,
+        uint32_t polyomino_mask_currentplayer,
+        uint32_t polyomino_mask_opponent
+            );
+        double evaluateCenterControll(
+            const std::array<uint64_t, kNumBitboardParts>& current_player_board,
+            const std::array<uint64_t, kNumBitboardParts>& opponent_board);
         std::vector<int> polyomino_to_indices(const uint64_t polyomino);
 
         std::vector<Action> LegalActions(const std::array<uint64_t, kNumBitboardParts>& board,
@@ -279,6 +321,7 @@ const  std::unordered_map<PolyominoType, std::vector<uint64_t>> ALL_POLYOMINO_VA
             const std::array<uint64_t, kNumBitboardParts>& opponent_board,
             char player_char, char opponent_char, char empty_char = '.');
         void update_polyomino_mask(uint32_t& polyomino_mask, PolyominoType type);
+        void add_polyomino_to_mask(uint32_t& polyomino_mask, PolyominoType type);
 
 
 

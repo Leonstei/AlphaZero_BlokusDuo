@@ -44,7 +44,7 @@ namespace algorithms {
 
 std::pair<double, Action> AlphaBetaSearch(
     const Game& game, const State* state,
-    std::function<double(const State&)> value_function, int depth_limit,
+    const std::function<double(const State&)>& value_function, int depth_limit,
     Player maximizing_player, bool use_undo = true);
 
 // Solves stochastic, 2-players, perfect-information 0-sum game.
@@ -68,7 +68,7 @@ std::pair<double, Action> AlphaBetaSearch(
 
 std::pair<double, Action> ExpectiminimaxSearch(
     const Game& game, const State* state,
-    std::function<double(const State&)> value_function, int depth_limit,
+    const std::function<double(const State&)>& value_function, int depth_limit,
     Player maximizing_player);
 
 }  // namespace algorithms

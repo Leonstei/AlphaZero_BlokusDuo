@@ -47,7 +47,7 @@ namespace {
 // Returns:
 //   The optimal value of the sub-game starting in state (given alpha/beta).
 double _alpha_beta(State* state, int depth, double alpha, double beta,
-                   std::function<double(const State&)> value_function,
+                   const std::function<double(const State&)>& value_function,
                    Player maximizing_player, Action* best_action,
                    bool use_undo) {
   if (state->IsTerminal()) {
@@ -152,7 +152,7 @@ double _alpha_beta(State* state, int depth, double alpha, double beta,
 // Returns:
 //   The optimal value of the sub-game starting in state.
 double _expectiminimax(const State* state, int depth,
-                       std::function<double(const State&)> value_function,
+                       const std::function<double(const State&)>& value_function,
                        Player maximizing_player, Action* best_action) {
   if (state->IsTerminal()) {
     return state->PlayerReturn(maximizing_player);
@@ -221,14 +221,14 @@ double _expectiminimax(const State* state, int depth,
 
 std::pair<double, Action> AlphaBetaSearch(
     const Game& game, const State* state,
-    std::function<double(const State&)> value_function, int depth_limit,
+    const std::function<double(const State&)>& value_function, int depth_limit,
     Player maximizing_player, bool use_undo) {
   SPIEL_CHECK_LE(game.NumPlayers(), 2);
 
   // Check to ensure the correct setup intended for this algorithm.
   // Note: do no check perfect vs. imperfect information to support use of
   // minimax as a subroutine of PIMC.
-  GameType game_info = game.GetType();
+  const GameType& game_info = game.GetType();
   SPIEL_CHECK_EQ(game_info.chance_mode, GameType::ChanceMode::kDeterministic);
   SPIEL_CHECK_EQ(game_info.dynamics, GameType::Dynamics::kSequential);
   SPIEL_CHECK_EQ(game_info.utility, GameType::Utility::kZeroSum);
@@ -257,11 +257,11 @@ std::pair<double, Action> AlphaBetaSearch(
 
 std::pair<double, Action> ExpectiminimaxSearch(
     const Game& game, const State* state,
-    std::function<double(const State&)> value_function, int depth_limit,
+    const std::function<double(const State&)>& value_function, int depth_limit,
     Player maximizing_player) {
   SPIEL_CHECK_LE(game.NumPlayers(), 2);
 
-  GameType game_info = game.GetType();
+  const GameType& game_info = game.GetType();
   SPIEL_CHECK_EQ(game_info.chance_mode,
                  GameType::ChanceMode::kExplicitStochastic);
   SPIEL_CHECK_EQ(game_info.information,

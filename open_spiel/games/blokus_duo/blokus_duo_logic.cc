@@ -29,6 +29,93 @@ namespace open_spiel {
             }
             return result;
         }
+        int count_edges(const std::array<uint64_t, kNumBitboardParts>& edges)
+        {
+            int total_count = 0;
+
+            // Durchlaufe alle 64-Bit-Teile des Bitboards
+            for (const uint64_t part : edges) {
+                // Zähle die gesetzten Bits im aktuellen 64-Bit-Teil
+                total_count += __builtin_popcountll(part);
+            }
+
+            return total_count;
+        }
+        double legal_moves_difference(
+        const std::array<uint64_t, kNumBitboardParts>& combined_board_,
+        const std::array<uint64_t, kNumBitboardParts>& border,
+        const std::array<uint64_t, kNumBitboardParts>& current_player_board,
+        const std::array<uint64_t, kNumBitboardParts>& opponent_board,
+        const std::array<uint64_t, kNumBitboardParts>& current_player_edges,
+        const std::array<uint64_t, kNumBitboardParts>& opponent_edges,
+        uint32_t polyomino_mask_currentplayer,
+        uint32_t polyomino_mask_opponent
+            )
+        {
+
+            int count_actions_currentplayer = 0;
+            int count_actions_opponent = 0;
+
+            // Annahme: ALL_DISTINCT_ACTIONS ist global verfügbar.
+            for (int i = 0; i < ALL_DISTINCT_ACTIONS.size(); ++i) {
+                const Action& action_data = ALL_DISTINCT_ACTIONS[i];
+
+                // 1. Prüfungen (z.B. Stein noch verfügbar)
+                if (!HasPolyomino( action_data.type, polyomino_mask_currentplayer)) continue;
+
+                // 2. Logische Platzierungsprüfung
+                if (is_placement_legal(
+                  combined_board_,
+                  border,
+                  current_player_edges,
+                  current_player_board,
+                  action_data.shifted))
+                {
+                    count_actions_currentplayer++;
+                }
+            }
+            for (int i = 0; i < ALL_DISTINCT_ACTIONS.size(); ++i) {
+                const Action& action_data = ALL_DISTINCT_ACTIONS[i];
+
+                // 1. Prüfungen (z.B. Stein noch verfügbar)
+                if (!HasPolyomino( action_data.type, polyomino_mask_opponent)) continue;
+
+                // 2. Logische Platzierungsprüfung
+                if (is_placement_legal(
+                  combined_board_,
+                  border,
+                  opponent_edges,
+                  opponent_board,
+                  action_data.shifted))
+                {
+                    count_actions_opponent++;
+                }
+            }
+            return count_actions_currentplayer - count_actions_opponent;
+        }
+
+        double evaluateCenterControll(
+            const std::array<uint64_t, kNumBitboardParts>& current_player_board,
+            const std::array<uint64_t, kNumBitboardParts>& opponent_board)
+        {
+            int player_center_count = 0;
+            int opponent_center_count = 0;
+
+            // Durchlaufe alle Teile des Bitboards
+            for (int i = 0; i < kNumBitboardParts; ++i) {
+                // Logische AND-Operation, um nur die Bits zu behalten, die in der Maske sind
+                uint64_t player_center_bits = current_player_board[i] & kCenterMask[i];
+                uint64_t opponent_center_bits = opponent_board[i] & kCenterMask[i];
+
+                // Zähle die gesetzten Bits im Zentrum
+                player_center_count += __builtin_popcountll(player_center_bits);
+                opponent_center_count += __builtin_popcountll(opponent_center_bits);
+            }
+
+            const double kCenterWeight = 3.0;
+
+            return static_cast<double>(player_center_count - opponent_center_count) * kCenterWeight;
+        }
 
         bool HasPolyomino(PolyominoType type, uint32_t polyomino_mask)
         {
@@ -284,6 +371,53 @@ std::vector<Action> GetAllDistinctActions(
                 opponent_edges[i] &= ~piece_mask[i];
             }
         }
+        void calculate_edges(
+            const std::array<uint64_t, kNumBitboardParts>& combined_board,
+            const std::array<uint64_t, kNumBitboardParts>& current_palyer_board,
+            const std::array<uint64_t, kNumBitboardParts>& opponent_board,
+            std::array<uint64_t, kNumBitboardParts>& edges,
+            std::array<uint64_t, kNumBitboardParts>& opponent_edges
+            )
+        {
+            std::array<uint64_t, kNumBitboardParts> piece_mask_current_player = current_palyer_board;
+            std::array<uint64_t, kNumBitboardParts> piece_mask_opponent = opponent_board;
+            std::array<uint64_t, kNumBitboardParts> orthogonal{};
+            std::array<uint64_t, kNumBitboardParts> orthogonal2{};
+            for (int i = 0; i < kNumBitboardParts; ++i)
+            {
+                const uint64_t m = piece_mask_current_player[i];
+                const uint64_t left = m << 1 & 0xFFFEFFFEFFFEFFFEULL;
+                const uint64_t right = m >> 1 & 0x7FFF7FFF7FFF7FFFULL;
+                const uint64_t lower = i > 0 ? piece_mask_current_player[i - 1] >> 48 : 0ULL;
+                const uint64_t down = m << 16 | lower;
+                const uint64_t upper = i < 3 ? piece_mask_current_player[i + 1] << 48 : 0ULL;
+                const uint64_t up = m >> 16 | upper;
+                const uint64_t up_left = up << 1 & 0xFFFEFFFEFFFEFFFEULL;
+                const uint64_t up_right = up >> 1 & 0x7FFF7FFF7FFF7FFFULL;
+                const uint64_t down_left = down << 1 & 0xFFFEFFFEFFFEFFFEULL;
+                const uint64_t down_right = down >> 1 & 0x7FFF7FFF7FFF7FFFULL;
+                orthogonal[i] |= down | up | left | right;
+                edges[i] = (up_left | up_right | down_left | down_right) & ~orthogonal[i];
+                edges[i] &= ~combined_board[i];
+            }
+            for (int i = 0; i < kNumBitboardParts; ++i)
+            {
+                const uint64_t m = piece_mask_opponent[i];
+                const uint64_t left = m << 1 & 0xFFFEFFFEFFFEFFFEULL;
+                const uint64_t right = m >> 1 & 0x7FFF7FFF7FFF7FFFULL;
+                const uint64_t lower = i > 0 ? piece_mask_opponent[i - 1] >> 48 : 0ULL;
+                const uint64_t down = m << 16 | lower;
+                const uint64_t upper = i < 3 ? piece_mask_opponent[i + 1] << 48 : 0ULL;
+                const uint64_t up = m >> 16 | upper;
+                const uint64_t up_left = up << 1 & 0xFFFEFFFEFFFEFFFEULL;
+                const uint64_t up_right = up >> 1 & 0x7FFF7FFF7FFF7FFFULL;
+                const uint64_t down_left = down << 1 & 0xFFFEFFFEFFFEFFFEULL;
+                const uint64_t down_right = down >> 1 & 0x7FFF7FFF7FFF7FFFULL;
+                orthogonal2[i] |= down | up | left | right;
+                opponent_edges[i] = (up_left | up_right | down_left | down_right) & ~orthogonal2[i];
+                opponent_edges[i] &= ~combined_board[i];
+            }
+        }
 
         void place_piece(
             const Action& action, // Nimmt die Action-Struktur als konstante Referenz
@@ -389,6 +523,11 @@ std::vector<Action> GetAllDistinctActions(
         {
             const int index = static_cast<int>(type);
             polyomino_mask &= ~(1u << index);
+        }
+        void add_polyomino_to_mask(uint32_t& polyomino_mask, PolyominoType type)
+        {
+            const int index = static_cast<int>(type);
+            polyomino_mask |= 1u << index;
         }
 
     }  // namespace blokus_duo

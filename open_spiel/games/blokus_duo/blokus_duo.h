@@ -73,6 +73,7 @@ class BlokusDuoState : public State {
   bool IsTerminal() const override;
   std::vector<double> Returns() const override;
   double PlayerReturn(Player player) const override;
+  double EvaluationFunktion(Player player) const;
   std::string InformationStateString(Player player) const override;
   std::string ObservationString(Player player) const override;
   void ObservationTensor(Player player,

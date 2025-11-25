@@ -285,9 +285,34 @@ double BlokusDuoState::PlayerReturn(Player player) const
 {
   if (!IsTerminal())
   {
-    return 0.0;
+    return EvaluationFunktion(player);
   }
   return Returns()[player];
+}
+
+double BlokusDuoState::EvaluationFunktion(Player player) const
+{
+  double score_player = CalculateFinalScore(player == 0 ? player_0_board_ : player_1_board_);
+  Player opponent = 1-player;
+  double score_opponent =CalculateFinalScore(opponent == 0 ? player_0_board_ : player_1_board_);
+  auto& current_player_edges =
+    player == 0 ? player_0_edges : player_1_edges;
+  auto& opponent_edges =
+    opponent == 0 ? player_0_edges : player_1_edges;
+  const auto& current_player_board =
+    player == 0 ? player_0_board_ : player_1_board_;
+  const auto& opponent_board =
+    player == 0 ? player_1_board_ : player_0_board_;
+  const uint32_t current_mask = player == 0 ? polyomino_mask_player_0 : polyomino_mask_player_1;
+  const uint32_t opponent_mask = player == 0 ? polyomino_mask_player_1 : polyomino_mask_player_0;
+
+  double value = (score_player - score_opponent) * 3
+  + legal_moves_difference(
+    combined_board_,bit_border_, current_player_board,opponent_board,
+    current_player_edges, opponent_edges,
+    current_mask, opponent_mask
+    ) + evaluateCenterControll(current_player_board, opponent_board);
+  return value;
 }
 
 std::string BlokusDuoState::InformationStateString(Player player) const {
@@ -377,7 +402,40 @@ void BlokusDuoState::ObservationTensor(Player player,
 }
 
 void BlokusDuoState::UndoAction(Player player, open_spiel::Action move) {
+  history_.pop_back();
+  --move_number_;     // Reduziert die Zugnummer
+  if ( move == kPassAction)
+  {
+    player == 0 ? player0_pass = false : player1_pass = false ;
+  } else
+  {
+    auto& current_player_board =
+      player == 0 ? player_0_board_ : player_1_board_;
+    auto& opponent_board =
+      player == 0 ? player_1_board_ : player_0_board_;
+    auto& current_player_edges =
+      player == 0 ? player_0_edges : player_1_edges;
+    auto& opponent_edges =
+      player == 0 ? player_1_edges : player_0_edges;
 
+    const Action& action = ALL_DISTINCT_ACTIONS[move];
+
+    current_player_board[action.shifted.part_index] &= ~action.shifted.first_part;
+    if (action.shifted.part_index < 3)
+    {
+      current_player_board[action.shifted.part_index + 1] &= ~action.shifted.second_part;
+    }
+    for (int i = 0; i < kNumBitboardParts; ++i)
+    {
+      combined_board_[i] = current_player_board[i] | opponent_board[i];
+    }
+    player == 0 ? add_polyomino_to_mask(polyomino_mask_player_0, action.type)
+    : add_polyomino_to_mask(polyomino_mask_player_1, action.type);
+
+    calculate_edges(combined_board_, current_player_board, opponent_board,
+                    current_player_edges, opponent_edges);
+  }
+  current_player_ =  player;
 }
 
 std::unique_ptr<State> BlokusDuoState::Clone() const {
