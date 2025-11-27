@@ -23,6 +23,17 @@
 namespace open_spiel {
 namespace algorithms {
 
+    // 3. Deklaration der AlphaBetaSearch mit Iterative Deepening
+    // Diese Funktion nutzt ein Zeitlimit anstelle eines festen Tiefenlimits.
+    std::pair<double, Action> AlphaBetaSearchID(
+        const Game& game,
+        State* state,
+        const std::function<double(const State&)>& value_function,
+        double max_time_seconds,
+        int depth_limit,
+        Player maximizing_player,
+        bool use_undo);
+
 // Solves deterministic, 2-players, perfect-information 0-sum game.
 //
 // Arguments:

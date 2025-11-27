@@ -8,6 +8,7 @@
 #include <array>
 #include <unordered_map>
 #include <vector>
+// #include <iostream>
 
 
 
@@ -210,6 +211,7 @@ const  std::unordered_map<PolyominoType, std::vector<uint64_t>> ALL_POLYOMINO_VA
 
         inline std::array<uint64_t, kNumBitboardParts> CreateCenterMask() {
             std::array<uint64_t, kNumBitboardParts> mask{}; // Initialisiert mit Nullen
+            // std::cout << std::endl << "Creating center mask..." << std::endl;
 
             // Wir definieren die 8x8-Region von Row 4 bis Row 11 und Col 4 bis Col 11.
             for (int row = 4; row < 12; ++row) {

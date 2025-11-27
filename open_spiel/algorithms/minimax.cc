@@ -61,7 +61,7 @@ double _alpha_beta(State* state, int depth, double alpha, double beta,
   }
 
   if (depth == 0) {
-    return value_function(*state);
+    return state->PlayerReturn(maximizing_player);
   }
 
   Player player = state->CurrentPlayer();
@@ -135,6 +135,8 @@ double _alpha_beta(State* state, int depth, double alpha, double beta,
     return value;
   }
 }
+
+
 
 // Expectiminimax algorithm.
 //
@@ -218,6 +220,79 @@ double _expectiminimax(const State* state, int depth,
   }
 }
 }  // namespace
+  std::pair<double, Action> AlphaBetaSearchID(
+    const open_spiel::Game& game,
+    open_spiel::State* state,
+    const std::function<double(const open_spiel::State&)>& value_function,
+    double max_time_seconds,
+    int depth_limit,
+    open_spiel::Player maximizing_player,
+    bool use_undo)
+{
+    // Die beste gefundene Aktion aus der letzten vollen Tiefe
+    open_spiel::Action best_action_overall = kInvalidAction;
+    double best_value_overall = -std::numeric_limits<double>::infinity();
+
+    if (state->LegalActions().empty())
+    {
+      std::cout << "actions are empty" << std::endl;
+    }
+    // Pruefen, ob es ueberhaupt Zuege gibt (z.B. bei Terminalzustand)
+    if (state->IsTerminal() || state->LegalActions().empty())
+    {
+      return {state->PlayerReturn(maximizing_player), kInvalidAction};
+    }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    int depth = 1;
+
+    while (true) {
+      auto current_start = std::chrono::high_resolution_clock::now();
+
+      if (depth > depth_limit) {
+        std::cout << "DEBUG: Maximale Tiefe (" << depth_limit << ") erreicht." << std::endl;
+        break;
+      }
+
+        // 1. Alpha-Beta-Suche fuer die aktuelle Tiefe durchführen
+      std::pair<double, open_spiel::Action> result_current_depth =
+          AlphaBetaSearch(
+              game,
+              state,
+              value_function,
+              depth, // <--- Die Tiefe steigt hier (z.B. 1, 2, 3...)
+              maximizing_player,
+              use_undo
+          );
+
+      auto current_end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> duration_total = current_end - start_time;
+      std::chrono::duration<double> duration_current_depth = current_end - start_time;
+
+      best_action_overall = result_current_depth.second;
+      best_value_overall = result_current_depth.first;
+
+      std::cout << "DEBUG: Tiefe " << depth << " abgeschlossen in "
+        << duration_current_depth.count() << "s. Gesamtzeit: "
+        << duration_total.count() << "s." << std::endl;
+
+
+      // 3. Abbruchbedingung (Zeitlimit erreicht)
+      std::chrono::duration<double> duration_next_search =
+        duration_current_depth * 64.0; // Schätzung fuer die nächste Tiefe (Verdopplung)
+
+      if (duration_total.count() + duration_next_search.count() >= max_time_seconds)
+      {
+        std::cout << "DEBUG: Zeitlimit erreicht. Abbruch nach Tiefe " << depth << std::endl;
+        break;
+      }
+
+      depth++;
+    }
+
+    // 4. Rueckgabe des besten Zuges aus der letzten VOLLSTAENDIGEN Tiefe
+    return {best_value_overall, best_action_overall};
+}
 
 std::pair<double, Action> AlphaBetaSearch(
     const Game& game, const State* state,
@@ -229,10 +304,10 @@ std::pair<double, Action> AlphaBetaSearch(
   // Note: do no check perfect vs. imperfect information to support use of
   // minimax as a subroutine of PIMC.
   const GameType& game_info = game.GetType();
-  SPIEL_CHECK_EQ(game_info.chance_mode, GameType::ChanceMode::kDeterministic);
-  SPIEL_CHECK_EQ(game_info.dynamics, GameType::Dynamics::kSequential);
-  SPIEL_CHECK_EQ(game_info.utility, GameType::Utility::kZeroSum);
-  SPIEL_CHECK_EQ(game_info.reward_model, GameType::RewardModel::kTerminal);
+  // SPIEL_CHECK_EQ(game_info.chance_mode, GameType::ChanceMode::kDeterministic);
+  // SPIEL_CHECK_EQ(game_info.dynamics, GameType::Dynamics::kSequential);
+  // SPIEL_CHECK_EQ(game_info.utility, GameType::Utility::kZeroSum);
+  // SPIEL_CHECK_EQ(game_info.reward_model, GameType::RewardModel::kTerminal);
 
   std::unique_ptr<State> search_root;
   if (state == nullptr) {

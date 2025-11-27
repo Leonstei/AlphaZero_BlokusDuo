@@ -283,6 +283,7 @@ std::vector<double> BlokusDuoState::Returns() const {
 
 double BlokusDuoState::PlayerReturn(Player player) const
 {
+  // return EvaluationFunktion(player);
   if (!IsTerminal())
   {
     return EvaluationFunktion(player);
@@ -306,12 +307,26 @@ double BlokusDuoState::EvaluationFunktion(Player player) const
   const uint32_t current_mask = player == 0 ? polyomino_mask_player_0 : polyomino_mask_player_1;
   const uint32_t opponent_mask = player == 0 ? polyomino_mask_player_1 : polyomino_mask_player_0;
 
-  double value = (score_player - score_opponent) * 3
-  + legal_moves_difference(
+  double blok_difference = (score_player - score_opponent) * 10;
+  double moves_difference = (legal_moves_difference(
     combined_board_,bit_border_, current_player_board,opponent_board,
     current_player_edges, opponent_edges,
-    current_mask, opponent_mask
-    ) + evaluateCenterControll(current_player_board, opponent_board);
+    current_mask, opponent_mask)) /11;
+  double centerControll  = evaluateCenterControll(current_player_board, opponent_board);
+  double value = blok_difference + moves_difference + centerControll;
+  // for (auto part : current_player_board)
+  // {
+  //   std::cout << part << ", " ;
+  // }
+  // std::cout<< std::endl;
+  // for (auto part : opponent_board)
+  // {
+  //   std::cout << part << ", " ;
+  // }
+  // std::cout<< std::endl;
+  // std::cout << "blok_difference = " << blok_difference << std::endl;
+  // std::cout << "moves_difference = " << moves_difference << std::endl;
+  // std::cout << "centerControll = " << centerControll << std::endl;
   return value;
 }
 

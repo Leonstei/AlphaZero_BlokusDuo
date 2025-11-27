@@ -46,7 +46,6 @@ void BasicBlokusDuoTests() {
   state->ObservationTensor(state->CurrentPlayer(), absl::MakeSpan(values));
   SPIEL_CHECK_FLOAT_EQ(values[0], 0.0f);
   const std::vector<int> expected_shape = {kTotalChannels, kBoardSizeWithoutBorder, kBoardSizeWithoutBorder};
-  std::vector<int> lol = expected_shape;
   SPIEL_CHECK_EQ(game->ObservationTensorShape(), expected_shape);
   const int expected_size = kTotalChannels * kBoardSizeWithoutBorder * kBoardSizeWithoutBorder;
   SPIEL_CHECK_EQ(game->ObservationTensorSize(), expected_size);
@@ -87,15 +86,14 @@ void BlokusMctsVsMinimaxTest() {
   std::unique_ptr<State> state = game->NewInitialState();
 
   // 2. AGENTEN INITIALISIEREN
-
   // A. Evaluator erstellen (nutzt die in mcts.h enthaltene Klasse)
-  const int kRolloutsPerEval = 10; // Anzahl der Rollouts zur Bewertung eines Blattes
+  const int kRolloutsPerEval = 5; // Anzahl der Rollouts zur Bewertung eines Blattes
   const int kSeedEval = 0;
 
 
   // Definieren der MCTS-Parameter fuer den Konstruktor
   const double kUctC = 2.0;
-  const int kMaxSimulations = 1000;
+  const int kMaxSimulations = 500;
   const int64_t kMaxMemoryMb = 1024;
   const bool kSolve = false; // Fuer Blokus Duo erstmal unnötig
   const int kSeed = 0;
@@ -146,15 +144,18 @@ void BlokusMctsVsMinimaxTest() {
         // std::cout << "minimax started "<< std::endl;
       // Minimax turn: nutzt die statische AlphaBetaSearch Funktion
 
-      int depth_limit = 3; // Maximale Suchtiefe
+      int depth_limit = 10; // Maximale Suchtiefe
+        double max_time =30.0;
 
       std::pair<double, open_spiel::Action> result =
-          open_spiel::algorithms::AlphaBetaSearch(
+          open_spiel::algorithms::AlphaBetaSearchID(
               *game,                  // Das Spiel
               state.get(),            // Der aktuelle Zustand
               BlokusValueFunction,                // Value-Function (NULL, wenn keine Heuristik verwendet wird)
-              depth_limit,            // Suchtiefe
-              current_player      // Maximizing Player ist der aktuelle Spieler
+              max_time,
+              depth_limit,
+              current_player,      // Maximizing Player ist der aktuelle Spieler,
+              true
           );
 
       action = result.second;

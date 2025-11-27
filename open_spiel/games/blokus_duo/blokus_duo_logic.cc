@@ -112,9 +112,8 @@ namespace open_spiel {
                 opponent_center_count += __builtin_popcountll(opponent_center_bits);
             }
 
-            const double kCenterWeight = 3.0;
 
-            return static_cast<double>(player_center_count - opponent_center_count) * kCenterWeight;
+            return player_center_count - opponent_center_count;
         }
 
         bool HasPolyomino(PolyominoType type, uint32_t polyomino_mask)
