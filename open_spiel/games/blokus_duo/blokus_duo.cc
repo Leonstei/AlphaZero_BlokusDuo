@@ -468,8 +468,8 @@ std::string BlokusDuoGame::ActionToString(Player player, open_spiel::Action acti
     return absl::StrCat(
         "P", player, " plays ",
         PolyominoTypeToString(action_data.type),
-        " (Var ", action_data.variant_index,
-        ") at Pos ", action_data.position,
+        // " (Var ", action_data.variant_index,
+        // ") at Pos ", action_data.position,
         " (Index ", index, ")"
     );
   }
