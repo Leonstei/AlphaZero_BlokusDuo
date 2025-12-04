@@ -15,6 +15,7 @@
 #include "open_spiel/algorithms/alpha_zero_torch/vpevaluator.h"
 
 #include <cstdint>
+#include <fstream>
 #include <memory>
 
 #include "open_spiel/abseil-cpp/absl/hash/hash.h"
@@ -25,12 +26,13 @@ namespace open_spiel {
 namespace algorithms {
 namespace torch_az {
 
+
 VPNetEvaluator::VPNetEvaluator(DeviceManager* device_manager, int batch_size,
-                               int threads, int cache_size, int cache_shards)
+                               int threads, int cache_size, int cache_shards, Logger* logger)
     : device_manager_(*device_manager),
       batch_size_(batch_size),
       queue_(batch_size * threads * 4),
-      batch_size_hist_(batch_size + 1) {
+      batch_size_hist_(batch_size + 1), logger_(logger) {
   cache_shards = std::max(1, cache_shards);
   cache_.reserve(cache_shards);
   for (int i = 0; i < cache_shards; ++i) {
@@ -106,7 +108,12 @@ VPNetModel::InferenceOutputs VPNetEvaluator::Inference(const State& state) {
     std::promise<VPNetModel::InferenceOutputs> prom;
     std::future<VPNetModel::InferenceOutputs> fut = prom.get_future();
     queue_.Push(QueueItem{inputs, &prom});
+    auto t0 = std::chrono::high_resolution_clock::now();
     outputs = fut.get();
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    double wait = std::chrono::duration<double>(t1 - t0).count();
+    LogCsv("gpu_wait", wait);
   }
   if (!cache_.empty()) {
     cache_[cache_shard]->Set(key, outputs);
@@ -146,6 +153,7 @@ void VPNetEvaluator::Runner() {
       absl::MutexLock lock(&stats_m_);
       batch_size_stats_.Add(inputs.size());
       batch_size_hist_.Add(inputs.size());
+      LogCsv("batch_size", static_cast<double>(inputs.size()));
     }
 
     std::vector<VPNetModel::InferenceOutputs> outputs =

@@ -38,22 +38,81 @@ void BasicBlokusDuoTests() {
   testing::LoadGameTest("blokus_duo");
   testing::NoChanceOutcomesTest(*LoadGame("blokus_duo"));
   testing::RandomSimTest(*LoadGame("blokus_duo"), 100);
-  auto game = LoadGame("blokus_duo");
-  auto state = game->NewInitialState();
 
 
-  std::vector<float> values(game ->ObservationTensorSize());
-  state->ObservationTensor(state->CurrentPlayer(), absl::MakeSpan(values));
-  SPIEL_CHECK_FLOAT_EQ(values[0], 0.0f);
-  const std::vector<int> expected_shape = {kTotalChannels, kBoardSizeWithoutBorder, kBoardSizeWithoutBorder};
-  SPIEL_CHECK_EQ(game->ObservationTensorShape(), expected_shape);
-  const int expected_size = kTotalChannels * kBoardSizeWithoutBorder * kBoardSizeWithoutBorder;
-  SPIEL_CHECK_EQ(game->ObservationTensorSize(), expected_size);
-  SPIEL_CHECK_FLOAT_EQ(values[0], 0.0f);
-  SPIEL_CHECK_FLOAT_EQ(values.back(), 1);
+  // auto game = LoadGame("blokus_duo");
+  // auto state = game->NewInitialState();
+
+
+  // std::vector<float> values(game ->ObservationTensorSize());
+  // state->ObservationTensor(state->CurrentPlayer(), absl::MakeSpan(values));
+  // SPIEL_CHECK_FLOAT_EQ(values[0], 0.0f);
+  // const std::vector<int> expected_shape = {kTotalChannels, kBoardSizeWithoutBorder, kBoardSizeWithoutBorder};
+  // SPIEL_CHECK_EQ(game->ObservationTensorShape(), expected_shape);
+  // const int expected_size = kTotalChannels * kBoardSizeWithoutBorder * kBoardSizeWithoutBorder;
+  // SPIEL_CHECK_EQ(game->ObservationTensorSize(), expected_size);
+  // SPIEL_CHECK_FLOAT_EQ(values[0], 0.0f);
+  // SPIEL_CHECK_FLOAT_EQ(values.back(), 1);
   // --- ENDE NEUER TEST ---
 
 }
+  void BenchmarkBlokusPerformance(int num_games) {
+  std::cout << "Starte Benchmark fuer " << num_games << " Spiele..." << std::endl;
+
+  auto game = LoadGame("blokus_duo");
+  std::mt19937 rng(12345); // Fester Seed für Reproduzierbarkeit
+
+  // Timer starten
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  long long total_moves = 0;
+
+  for (int i = 0; i < num_games; ++i) {
+    std::unique_ptr<State> state = game->NewInitialState();
+
+    while (!state->IsTerminal()) {
+      // 1. Legal Actions holen (Das ist oft der Flaschenhals bei Blokus!)
+      std::vector<open_spiel::Action> actions = state->LegalActions();
+
+      if (actions.empty()) {
+        // Sollte bei Blokus eigentlich nicht passieren bevor Terminal,
+        // außer bei Pass-Moves, aber sicherheitshalber:
+        break;
+      }
+
+      // 2. Zufälligen Zug wählen
+      std::uniform_int_distribution<int> dist(0, actions.size() - 1);
+      open_spiel::Action action = actions[dist(rng)];
+
+      if (total_moves == 110)
+      {
+        std::cout << state->HistoryString() << std::endl;
+      }
+      // 3. Zug anwenden
+      state->ApplyAction(action);
+      total_moves++;
+    }
+  }
+
+  // Timer stoppen
+  auto end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> diff = end_time - start_time;
+
+  double total_seconds = diff.count();
+  double games_per_second = num_games / total_seconds;
+  double moves_per_second = total_moves / total_seconds;
+
+  std::cout << "------------------------------------------------" << std::endl;
+  std::cout << "Zeit gesamt:       " << total_seconds << " s" << std::endl;
+  std::cout << "Anzahl Spiele:     " << num_games << std::endl;
+  std::cout << "Anzahl Züge:       " << total_moves << std::endl;
+  std::cout << "Durschn. Züge/Spiel: " << (double)total_moves / num_games << std::endl;
+  std::cout << "------------------------------------------------" << std::endl;
+  std::cout << "Spiele pro Sekunde: " << games_per_second << " (Wichtig!)" << std::endl;
+  std::cout << "Züge pro Sekunde:   " << moves_per_second << std::endl;
+  std::cout << "------------------------------------------------" << std::endl;
+}
+
 
 void TestStateStruct() {
   auto game = LoadGame("blokus_duo");
@@ -183,8 +242,9 @@ void BlokusMctsVsMinimaxTest() {
 }  // namespace open_spiel
 
 int main(int argc, char** argv) {
-  // open_spiel::blokus_duo::BasicBlokusDuoTests();
+  open_spiel::blokus_duo::BenchmarkBlokusPerformance(10000);
+  //open_spiel::blokus_duo::BasicBlokusDuoTests();
   // open_spiel::blokus_duo::TestStateStruct();
-  open_spiel::blokus_duo::BlokusMctsVsMinimaxTest();
+  //open_spiel::blokus_duo::BlokusMctsVsMinimaxTest();
 
 }

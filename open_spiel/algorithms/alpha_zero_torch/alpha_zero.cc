@@ -113,6 +113,7 @@ Trajectory PlayGame(Logger* logger, int game_num, const open_spiel::Game& game,
   std::unique_ptr<open_spiel::State> state = game.NewInitialState();
   std::vector<std::string> history;
   Trajectory trajectory;
+  auto game_start = std::chrono::high_resolution_clock::now();
 
   while (true) {
     if (state->IsChanceNode()) {
@@ -123,7 +124,12 @@ Trajectory PlayGame(Logger* logger, int game_num, const open_spiel::Game& game,
       state->ApplyAction(action);
     } else {
       open_spiel::Player player = state->CurrentPlayer();
+      auto t0 = std::chrono::high_resolution_clock::now();
       std::unique_ptr<SearchNode> root = (*bots)[player]->MCTSearch(*state);
+      auto t1 = std::chrono::high_resolution_clock::now();
+      double mcts_time = std::chrono::duration<double>(t1 - t0).count();
+      // logger->Print(absl::StrCat("mcts_time=", mcts_time));
+      LogCsv("mcts_time=", mcts_time);
       open_spiel::ActionsAndProbs policy;
       policy.reserve(root->children.size());
       for (const SearchNode& c : root->children) {
@@ -163,6 +169,9 @@ Trajectory PlayGame(Logger* logger, int game_num, const open_spiel::Game& game,
   logger->Print("Game %d: Returns: %s; Actions: %s", game_num,
                 absl::StrJoin(trajectory.returns, " "),
                 absl::StrJoin(history, " "));
+  auto game_end = std::chrono::high_resolution_clock::now();
+  double game_time = std::chrono::duration<double>(game_end - game_start).count();
+  LogCsv("game_time=", game_time);
   return trajectory;
 }
 

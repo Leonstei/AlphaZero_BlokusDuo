@@ -15,6 +15,7 @@
 #ifndef OPEN_SPIEL_ALGORITHMS_ALPHA_ZERO_TORCH_VPEVALUATOR_H_
 #define OPEN_SPIEL_ALGORITHMS_ALPHA_ZERO_TORCH_VPEVALUATOR_H_
 
+#include <fstream>
 #include <future>  // NOLINT
 #include <vector>
 
@@ -27,15 +28,35 @@
 #include "open_spiel/utils/stats.h"
 #include "open_spiel/utils/thread.h"
 #include "open_spiel/utils/threaded_queue.h"
+#include "utils/logger.h"
 
 namespace open_spiel {
 namespace algorithms {
 namespace torch_az {
 
+    static std::mutex g_log_mutex;
+    static std::ofstream g_log_file("gpu_metrics.csv", std::ios::app);
+
+    static void LogCsv(const std::string& tag, double value) {
+        using clock = std::chrono::high_resolution_clock;
+        auto t = clock::now().time_since_epoch();
+        long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count();
+
+        std::lock_guard<std::mutex> lk(g_log_mutex);
+
+        if (!g_log_file.is_open()) {
+            // Dieser Fall sollte eigentlich nicht passieren, aber zur Sicherheit:
+            g_log_file.open("gpu_metrics.csv", std::ios::app);
+        }
+
+        g_log_file << ms << "," << tag << "," << std::fixed << std::setprecision(6) << value << "\n";
+        g_log_file.flush();  // stellt sicher, dass crashs die Logs nicht verlieren
+    }
+
 class VPNetEvaluator : public Evaluator {
  public:
   explicit VPNetEvaluator(DeviceManager* device_manager, int batch_size,
-                          int threads, int cache_size, int cache_shards = 1);
+                          int threads, int cache_size, int cache_shards = 1, Logger* logger = nullptr);
   ~VPNetEvaluator() override;
 
   // Return a value of this state for each player.
@@ -52,6 +73,7 @@ class VPNetEvaluator : public Evaluator {
   open_spiel::HistogramNumbered BatchSizeHistogram();
 
  private:
+    Logger* logger_;
   VPNetModel::InferenceOutputs Inference(const State& state);
 
   void Runner();

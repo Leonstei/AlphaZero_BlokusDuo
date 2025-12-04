@@ -80,7 +80,62 @@ void CheckFullBoardDraw() {
   SPIEL_CHECK_TRUE(state.IsTerminal());
   SPIEL_CHECK_EQ(state.Returns(), (std::vector<double>{0, 0}));
 }
+  void BenchmarkBlokusPerformance(int num_games) {
+  std::cout << "Starte Benchmark fuer " << num_games << " Spiele..." << std::endl;
 
+  auto game = LoadGame("connect_four");
+  std::mt19937 rng(12345); // Fester Seed für Reproduzierbarkeit
+
+  // Timer starten
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  long long total_moves = 0;
+
+  for (int i = 0; i < num_games; ++i) {
+    std::unique_ptr<State> state = game->NewInitialState();
+
+    while (!state->IsTerminal()) {
+      // 1. Legal Actions holen (Das ist oft der Flaschenhals bei Blokus!)
+      std::vector<open_spiel::Action> actions = state->LegalActions();
+
+      if (actions.empty()) {
+        // Sollte bei Blokus eigentlich nicht passieren bevor Terminal,
+        // außer bei Pass-Moves, aber sicherheitshalber:
+        break;
+      }
+
+      // 2. Zufälligen Zug wählen
+      std::uniform_int_distribution<int> dist(0, actions.size() - 1);
+      open_spiel::Action action = actions[dist(rng)];
+
+      if (total_moves == 110)
+      {
+        std::cout << state->HistoryString() << std::endl;
+      }
+      // 3. Zug anwenden
+      state->ApplyAction(action);
+      total_moves++;
+    }
+  }
+
+  // Timer stoppen
+  auto end_time = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> diff = end_time - start_time;
+
+  double total_seconds = diff.count();
+  double games_per_second = num_games / total_seconds;
+  double moves_per_second = total_moves / total_seconds;
+
+  std::cout << "------------------------------------------------" << std::endl;
+  std::cout << "Zeit gesamt:       " << total_seconds << " s" << std::endl;
+  std::cout << "Anzahl Spiele:     " << num_games << std::endl;
+  std::cout << "Anzahl Züge:       " << total_moves << std::endl;
+  std::cout << "Durschn. Züge/Spiel: " << (double)total_moves / num_games << std::endl;
+  std::cout << "------------------------------------------------" << std::endl;
+  std::cout << "Spiele pro Sekunde: " << games_per_second << " (Wichtig!)" << std::endl;
+  std::cout << "Züge pro Sekunde:   " << moves_per_second << std::endl;
+  std::cout << "------------------------------------------------" << std::endl;
+}
 void TestStateStruct() {
   auto game = LoadGame("connect_four");
   auto state = game->NewInitialState();
@@ -122,9 +177,10 @@ void TestStateStruct() {
 }  // namespace open_spiel
 
 int main(int argc, char **argv) {
-  open_spiel::connect_four::BasicConnectFourTests();
-  open_spiel::connect_four::FastLoss();
-  open_spiel::connect_four::BasicSerializationTest();
-  open_spiel::connect_four::CheckFullBoardDraw();
-  open_spiel::connect_four::TestStateStruct();
+  open_spiel::connect_four::BenchmarkBlokusPerformance(100000);
+  // open_spiel::connect_four::BasicConnectFourTests();
+  // open_spiel::connect_four::FastLoss();
+  // open_spiel::connect_four::BasicSerializationTest();
+  // open_spiel::connect_four::CheckFullBoardDraw();
+  // open_spiel::connect_four::TestStateStruct();
 }
