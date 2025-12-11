@@ -103,17 +103,20 @@ VPNetModel::InferenceOutputs VPNetEvaluator::Inference(const State& state) {
   }
   VPNetModel::InferenceOutputs outputs;
   if (batch_size_ <= 1) {
+    // auto t0 = std::chrono::high_resolution_clock::now();
     outputs = device_manager_.Get(1)->Inference(std::vector{inputs})[0];
+    // auto t1 = std::chrono::high_resolution_clock::now();
+    // LogCsv("gpu_forward_only", std::chrono::duration<double>(t1 - t0).count());
   } else {
     std::promise<VPNetModel::InferenceOutputs> prom;
     std::future<VPNetModel::InferenceOutputs> fut = prom.get_future();
     queue_.Push(QueueItem{inputs, &prom});
-    auto t0 = std::chrono::high_resolution_clock::now();
+    // auto t0 = std::chrono::high_resolution_clock::now();
     outputs = fut.get();
-    auto t1 = std::chrono::high_resolution_clock::now();
-
-    double wait = std::chrono::duration<double>(t1 - t0).count();
-    LogCsv("gpu_wait", wait);
+    // auto t1 = std::chrono::high_resolution_clock::now();
+    //
+    // double wait = std::chrono::duration<double>(t1 - t0).count();
+    // LogCsv("gpu_wait", wait);
   }
   if (!cache_.empty()) {
     cache_[cache_shard]->Set(key, outputs);
@@ -153,7 +156,7 @@ void VPNetEvaluator::Runner() {
       absl::MutexLock lock(&stats_m_);
       batch_size_stats_.Add(inputs.size());
       batch_size_hist_.Add(inputs.size());
-      LogCsv("batch_size", static_cast<double>(inputs.size()));
+      // LogCsv("batch_size", static_cast<double>(inputs.size()));
     }
 
     std::vector<VPNetModel::InferenceOutputs> outputs =

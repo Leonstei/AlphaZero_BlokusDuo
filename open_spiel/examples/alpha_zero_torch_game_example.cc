@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "algorithms/minimax.h"
 #include "open_spiel/abseil-cpp/absl/flags/flag.h"
 #include "open_spiel/abseil-cpp/absl/flags/parse.h"
 #include "open_spiel/abseil-cpp/absl/strings/str_join.h"
@@ -84,6 +85,10 @@ InitBot(std::string type, const open_spiel::Game &game,
         absl::GetFlag(FLAGS_max_simulations),
         absl::GetFlag(FLAGS_max_memory_mb), absl::GetFlag(FLAGS_solve), Seed(),
         absl::GetFlag(FLAGS_verbose));
+  }
+  if (type == "minimax") {
+    return std::make_unique<open_spiel::algorithms::AlphaBetaBot>(
+        game);
   }
   if (type == "random") {
     return open_spiel::MakeUniformRandomBot(player, Seed());

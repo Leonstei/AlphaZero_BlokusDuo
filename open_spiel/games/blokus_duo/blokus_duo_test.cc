@@ -84,10 +84,10 @@ void BasicBlokusDuoTests() {
       std::uniform_int_distribution<int> dist(0, actions.size() - 1);
       open_spiel::Action action = actions[dist(rng)];
 
-      if (total_moves == 110)
-      {
-        std::cout << state->HistoryString() << std::endl;
-      }
+      // if (total_moves == 110)
+      // {
+      //   std::cout << state->HistoryString() << std::endl;
+      // }
       // 3. Zug anwenden
       state->ApplyAction(action);
       total_moves++;
@@ -130,14 +130,6 @@ void TestStateStruct() {
   //                BlokusDuoStateStruct(state_json).ToJson());
 }
 
-double BlokusValueFunction(const State& state){
-    // Gibt den Wert aus Sicht des aktuellen Spielers zurueck.
-    // Z.B. (Eigene_Punkte - Gegner_Punkte) / 100
-    // Dies müsste in Ihrer Blokus_Duo Implementierung vorhanden sein!
-    // const auto& blokus_state = dynamic_cast<const BlokusDuoState&>(state);
-    // return blokus_state.EvaluationFunktion(state.CurrentPlayer());
-    return state.PlayerReturn(state.CurrentPlayer());
-}
 void BlokusMctsVsMinimaxTest() {
   // 1. SPIEL LADEN UND ZUSTAND INITIALISIEREN
   // Stellen Sie sicher, dass "blokus_duo" als Kurzname (Short Name) in Ihrem Spiel registriert ist.
@@ -208,9 +200,9 @@ void BlokusMctsVsMinimaxTest() {
 
       std::pair<double, open_spiel::Action> result =
           open_spiel::algorithms::AlphaBetaSearchID(
-              *game,                  // Das Spiel
+              *game,
               state.get(),            // Der aktuelle Zustand
-              BlokusValueFunction,                // Value-Function (NULL, wenn keine Heuristik verwendet wird)
+              algorithms::BlokusValueFunction,                // Value-Function (NULL, wenn keine Heuristik verwendet wird)
               max_time,
               depth_limit,
               current_player,      // Maximizing Player ist der aktuelle Spieler,

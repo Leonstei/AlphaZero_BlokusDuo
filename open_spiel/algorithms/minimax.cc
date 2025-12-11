@@ -222,7 +222,7 @@ double _expectiminimax(const State* state, int depth,
 }  // namespace
   std::pair<double, Action> AlphaBetaSearchID(
     const open_spiel::Game& game,
-    open_spiel::State* state,
+    const open_spiel::State* state,
     const std::function<double(const open_spiel::State&)>& value_function,
     double max_time_seconds,
     int depth_limit,
