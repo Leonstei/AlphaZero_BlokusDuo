@@ -37,7 +37,9 @@
 ABSL_FLAG(std::string, game, "tic_tac_toe", "The name of the game to play.");
 ABSL_FLAG(std::string, player1, "az", "Who controls player1.");
 ABSL_FLAG(std::string, player2, "random", "Who controls player2.");
-ABSL_FLAG(std::string, az_path, "", "Path to AZ experiment.");
+ABSL_FLAG(std::string, az_path1, "", "Path to AZ experiment for player 1.");
+ABSL_FLAG(std::string, az_path2, "", "Path to AZ experiment for player 2.");
+
 ABSL_FLAG(std::string, az_graph_def, "vpnet.pb",
           "AZ graph definition file name.");
 ABSL_FLAG(double, uct_c, 2, "UCT exploration constant.");
@@ -46,7 +48,8 @@ ABSL_FLAG(int, max_simulations, 10000, "How many simulations to run.");
 ABSL_FLAG(int, num_games, 1, "How many games to play.");
 ABSL_FLAG(int, max_memory_mb, 1000,
           "The maximum memory used before cutting the search short.");
-ABSL_FLAG(int, az_checkpoint, -1, "Checkpoint of AZ model.");
+ABSL_FLAG(int, az_checkpoint1, -1, "Checkpoint of AZ model for player 1.");
+ABSL_FLAG(int, az_checkpoint2, -1, "Checkpoint of AZ model for player 2.");
 ABSL_FLAG(int, az_batch_size, 1, "Batch size of AZ inference.");
 ABSL_FLAG(int, az_threads, 1, "Number of threads to run for AZ inference.");
 ABSL_FLAG(int, az_cache_size, 16384, "Cache size of AZ algorithm.");
@@ -194,33 +197,41 @@ int main(int argc, char **argv) {
     open_spiel::SpielFatalError("Game must have terminal rewards.");
   if (game_type.dynamics != open_spiel::GameType::Dynamics::kSequential)
     open_spiel::SpielFatalError("Game must have sequential turns.");
-  if (absl::GetFlag(FLAGS_az_path).empty())
+  if (absl::GetFlag(FLAGS_az_path1).empty())
     open_spiel::SpielFatalError("AlphaZero path must be specified.");
   if (absl::GetFlag(FLAGS_player1) != "az" &&
       absl::GetFlag(FLAGS_player2) != "az")
     open_spiel::SpielFatalError("One of the players must be AlphaZero.");
 
-  open_spiel::algorithms::torch_az::DeviceManager device_manager;
-  device_manager.AddDevice(open_spiel::algorithms::torch_az::VPNetModel(
-      *game, absl::GetFlag(FLAGS_az_path), absl::GetFlag(FLAGS_az_graph_def),
-      "/cpu:0"));
-  device_manager.Get(0, 0)->LoadCheckpoint(absl::GetFlag(FLAGS_az_checkpoint));
-  auto az_evaluator =
-      std::make_shared<open_spiel::algorithms::torch_az::VPNetEvaluator>(
-          /*device_manager=*/&device_manager,
-          /*batch_size=*/absl::GetFlag(FLAGS_az_batch_size),
-          /*threads=*/absl::GetFlag(FLAGS_az_threads),
-          /*cache_size=*/absl::GetFlag(FLAGS_az_cache_size),
-          /*cache_shards=*/absl::GetFlag(FLAGS_az_cache_shards));
+  // --- Evaluator für Spieler 1 (AZ) ---
+  open_spiel::algorithms::torch_az::DeviceManager device_manager1;
+  device_manager1.AddDevice(open_spiel::algorithms::torch_az::VPNetModel(
+      *game, absl::GetFlag(FLAGS_az_path1), absl::GetFlag(FLAGS_az_graph_def), "/cpu:0"));
+  device_manager1.Get(0, 0)->LoadCheckpoint(absl::GetFlag(FLAGS_az_checkpoint1));
+
+  auto az_evaluator1 = std::make_shared<open_spiel::algorithms::torch_az::VPNetEvaluator>(
+      &device_manager1, absl::GetFlag(FLAGS_az_batch_size), absl::GetFlag(FLAGS_az_threads),
+      absl::GetFlag(FLAGS_az_cache_size), absl::GetFlag(FLAGS_az_cache_shards));
+
+  // --- Evaluator für Spieler 2 (AZ) ---
+  open_spiel::algorithms::torch_az::DeviceManager device_manager2;
+  device_manager2.AddDevice(open_spiel::algorithms::torch_az::VPNetModel(
+      *game, absl::GetFlag(FLAGS_az_path2), absl::GetFlag(FLAGS_az_graph_def), "/cpu:0"));
+  device_manager2.Get(0, 0)->LoadCheckpoint(absl::GetFlag(FLAGS_az_checkpoint2));
+
+  auto az_evaluator2 = std::make_shared<open_spiel::algorithms::torch_az::VPNetEvaluator>(
+      &device_manager2, absl::GetFlag(FLAGS_az_batch_size), absl::GetFlag(FLAGS_az_threads),
+      absl::GetFlag(FLAGS_az_cache_size), absl::GetFlag(FLAGS_az_cache_shards));
+
   auto evaluator =
       std::make_shared<open_spiel::algorithms::RandomRolloutEvaluator>(
           absl::GetFlag(FLAGS_rollout_count), Seed());
 
   std::vector<std::unique_ptr<open_spiel::Bot>> bots;
   bots.push_back(
-      InitBot(absl::GetFlag(FLAGS_player1), *game, 0, evaluator, az_evaluator));
+      InitBot(absl::GetFlag(FLAGS_player1), *game, 0, evaluator, az_evaluator1));
   bots.push_back(
-      InitBot(absl::GetFlag(FLAGS_player2), *game, 1, evaluator, az_evaluator));
+      InitBot(absl::GetFlag(FLAGS_player2), *game, 1, evaluator, az_evaluator2));
 
   std::vector<std::string> initial_actions;
   for (int i = 1; i < positional_args.size(); ++i) {
