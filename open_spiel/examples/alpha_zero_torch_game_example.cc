@@ -70,7 +70,7 @@ InitBot(std::string type, const open_spiel::Game &game,
   if (type == "az") {
     return std::make_unique<open_spiel::algorithms::MCTSBot>(
         game, std::move(az_evaluator), absl::GetFlag(FLAGS_uct_c),
-        absl::GetFlag(FLAGS_max_simulations),
+        (absl::GetFlag(FLAGS_max_simulations)*2),
         absl::GetFlag(FLAGS_max_memory_mb), absl::GetFlag(FLAGS_solve), Seed(),
         absl::GetFlag(FLAGS_verbose),
         open_spiel::algorithms::ChildSelectionPolicy::PUCT, 0, 0,
