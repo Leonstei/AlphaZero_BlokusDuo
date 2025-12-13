@@ -76,7 +76,7 @@ InitBot(std::string type, const open_spiel::Game &game,
         (absl::GetFlag(FLAGS_max_simulations)*2),
         absl::GetFlag(FLAGS_max_memory_mb), absl::GetFlag(FLAGS_solve), Seed(),
         absl::GetFlag(FLAGS_verbose),
-        open_spiel::algorithms::ChildSelectionPolicy::PUCT, 0, 0,
+        open_spiel::algorithms::ChildSelectionPolicy::PUCT, 0.2, 0.2,
         /*dont_return_chance_node=*/true);
   }
   if (type == "human") {
