@@ -19,6 +19,8 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <fstream>
 
 #include "algorithms/minimax.h"
 #include "open_spiel/abseil-cpp/absl/flags/flag.h"
@@ -58,6 +60,25 @@ ABSL_FLAG(bool, solve, true, "Whether to use MCTS-Solver.");
 ABSL_FLAG(uint_fast32_t, seed, 0, "Seed for MCTS.");
 ABSL_FLAG(bool, verbose, false, "Show the MCTS stats of possible moves.");
 ABSL_FLAG(bool, quiet, false, "Show the MCTS stats of possible moves.");
+
+static std::mutex g_log_mutex;
+static std::ofstream g_log_file("gpu_metrics.csv", std::ios::app);
+
+static void LogCsv2(const std::string& tag, double value) {
+  using clock = std::chrono::high_resolution_clock;
+  auto t = clock::now().time_since_epoch();
+  long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(t).count();
+
+  std::lock_guard<std::mutex> lk(g_log_mutex);
+
+  if (!g_log_file.is_open()) {
+    // Dieser Fall sollte eigentlich nicht passieren, aber zur Sicherheit:
+    g_log_file.open("gpu_metrics.csv", std::ios::app);
+  }
+
+  g_log_file << ms << "," << tag << "," << std::fixed << std::setprecision(6) << value << "\n";
+  g_log_file.flush();  // stellt sicher, dass crashs die Logs nicht verlieren
+}
 
 uint_fast32_t Seed() {
   uint_fast32_t seed = absl::GetFlag(FLAGS_seed);
@@ -138,6 +159,7 @@ PlayGame(const open_spiel::Game &game,
       std::cerr << "Next state:\n" << state->ToString() << std::endl;
     }
   }
+  std::map<open_spiel::Player, std::vector<double>> move_times;
 
   while (!state->IsTerminal()) {
     open_spiel::Player player = state->CurrentPlayer();
@@ -150,7 +172,13 @@ PlayGame(const open_spiel::Game &game,
     } else {
       // The state must be a decision node, ask the right bot to make its
       // action.
+      auto start = std::chrono::high_resolution_clock::now();
       action = bots[player]->Step(*state);
+      auto end = std::chrono::high_resolution_clock::now();
+      std::chrono::duration<double> diff = end - start;
+
+      // Zeit in Sekunden speichern
+      move_times[player].push_back(diff.count());
     }
     if (!quiet)
       std::cerr << "Player " << player
@@ -170,6 +198,13 @@ PlayGame(const open_spiel::Game &game,
 
     if (!quiet)
       std::cerr << "Next state:\n" << state->ToString() << std::endl;
+  }
+  std::ofstream outfile("move_times.csv");
+  outfile << "player,move_time\n";
+  for (auto const& [player, times] : move_times) {
+    for (double t : times) {
+      outfile << player << "," << t << "\n";
+    }
   }
 
   std::cerr << "Returns: " << absl::StrJoin(state->Returns(), ", ")
