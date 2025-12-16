@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Daten laden
-df = pd.read_csv('move_times.csv')
+df = pd.read_csv('/home/inf2927/AlphaZero_BlokusDuo/open_spiel/move_times.csv')
 
 # Plot erstellen
 plt.figure(figsize=(10, 6))

@@ -199,7 +199,7 @@ PlayGame(const open_spiel::Game &game,
     if (!quiet)
       std::cerr << "Next state:\n" << state->ToString() << std::endl;
   }
-  std::ofstream outfile("move_times.csv");
+  std::ofstream outfile("/home/inf2927/AlphaZero_BlokusDuo/open_spiel/move_times.csv");
   outfile << "player,move_time\n";
   for (auto const& [player, times] : move_times) {
     for (double t : times) {
