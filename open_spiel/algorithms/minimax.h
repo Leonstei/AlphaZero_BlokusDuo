@@ -106,7 +106,7 @@ public:
     {
         open_spiel::Player player = state.CurrentPlayer();
 
-        double max_time = 10.0;
+        double max_time = 11.0;
         int depth_limit = 10; // maximale Suchtiefe
 
         auto result = open_spiel::algorithms::AlphaBetaSearchID(

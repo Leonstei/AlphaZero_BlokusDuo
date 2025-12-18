@@ -199,13 +199,15 @@ PlayGame(const open_spiel::Game &game,
     if (!quiet)
       std::cerr << "Next state:\n" << state->ToString() << std::endl;
   }
-  std::ofstream outfile("/home/inf2927/AlphaZero_BlokusDuo/open_spiel/move_times.csv");
+  std::ofstream outfile("/home/leoney/CLionProjects/AlphaZero_BlokusDuo/open_spiel/open_spiel/move_times.csv");
+  //std::ofstream outfile("/home/inf2927/AlphaZero_BlokusDuo/open_spiel/move_times.csv", std::ios_base::app);
   outfile << "player,move_time\n";
   for (auto const& [player, times] : move_times) {
     for (double t : times) {
       outfile << player << "," << t << "\n";
     }
   }
+
 
   std::cerr << "Returns: " << absl::StrJoin(state->Returns(), ", ")
             << std::endl;
@@ -234,9 +236,9 @@ int main(int argc, char **argv) {
     open_spiel::SpielFatalError("Game must have sequential turns.");
   if (absl::GetFlag(FLAGS_az_path1).empty())
     open_spiel::SpielFatalError("AlphaZero path must be specified.");
-  if (absl::GetFlag(FLAGS_player1) != "az" &&
-      absl::GetFlag(FLAGS_player2) != "az")
-    open_spiel::SpielFatalError("One of the players must be AlphaZero.");
+  // if (absl::GetFlag(FLAGS_player1) != "az" &&
+  //     absl::GetFlag(FLAGS_player2) != "az")
+  //   open_spiel::SpielFatalError("One of the players must be AlphaZero.");
 
   // --- Evaluator für Spieler 1 (AZ) ---
   open_spiel::algorithms::torch_az::DeviceManager device_manager1;

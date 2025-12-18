@@ -279,7 +279,7 @@ double _expectiminimax(const State* state, int depth,
 
       // 3. Abbruchbedingung (Zeitlimit erreicht)
       std::chrono::duration<double> duration_next_search =
-        duration_current_depth * 64.0; // Schätzung fuer die nächste Tiefe (Verdopplung)
+        duration_current_depth * 60.0; // Schätzung fuer die nächste Tiefe (Verdopplung)
 
       if (duration_total.count() + duration_next_search.count() >= max_time_seconds)
       {
